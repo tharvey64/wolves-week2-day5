@@ -91,18 +91,19 @@ class BattleShip:
 
         start = current_board.board_key(start_coor)
         end = current_board.board_key(end_coor)
-
+        # calling the board_key method ensures a letter will be
+        # at index 0
         if start[0] == end[0]:
-            if abs(start[1]-end[1]) == ship.size:
+            if abs(int(start[1:])-int(end[1:])) == ship.size:
                 
-                place_ship_here = self.coordinate_generator(start[1],end[1], start[0])
-                # place_ship_here = [(start[0],y) for y in y_coor]
+                row_values = self.coordinate_generator(int(start[1:]),int(end[1:]))
+                place_ship_here = [start[0]+str(i) for i in row_values]
 
-        elif start[1] == end[1]:
+        elif start[1:] == end[1:]:
             if abs(ord(start[0])-ord(end[0])) == ship.size:
 
-                place_ship_here = self.coordinate_generator(ord(start[0]),ord(end[0]), start[1])
-                # place_ship_here = [(x,start[1]) for x in x_coor]
+                column_values = self.coordinate_generator(ord(start[0]),ord(end[0]))
+                place_ship_here = [chr(x) + start[1:] for x in column_values]
 
         if place_ship_here and not self.occupied(place_ship_here):
             for key in place_ship_here:
@@ -110,9 +111,9 @@ class BattleShip:
             return True
         return False
     # adjusted for new version
-    def coordinate_generator(start, end, fixed):
+    def coordinate_generator(start, end):
         step = int(start-end / -(start-end))
-        return [str(i)+str(fixed) for i in range(start, end+step, step)]
+        return [i for i in range(start, end+step, step)]
 
     # input from BattleShip.place_ship()
     # called in BattleShip.place_ship()
@@ -147,7 +148,7 @@ class BattleShip:
         target_board.edit_board(key, value)
         self.players[0].previous_targets.append(target_key)
         return True
-        
+
     # no input
     # called in BattleShip.game_over()
     # adjusted for new board model
