@@ -23,12 +23,15 @@ class Ship:
 class Board:
     def __init__(self, size=10):
         self.size = size
-        self.board = {chr(65+j)+str(i+1): '~' for i in range(self.size) for j in range(self.size)}
+        self.board = {}
         self.previous_targets = []
-        
     # creates key and checks to see if it is valid
     # i like this below
-    def _board_key(self, string_value):
+    # tested
+    def create_board(self):
+        self.board = {chr(65+j)+str(i+1): '~' for i in range(self.size) for j in range(self.size)}
+
+    def board_key(self, string_value):
         column = "".join([char.upper() for char in string_value if char.isalpha()])
         if ord(column) > 64 + self.size or ord(column) < 65:
             return False  
@@ -40,8 +43,9 @@ class Board:
     # returns the value at the key provided if the key is in the dict 
     # i dont like this it shouldnt return the ship value the ship value 
     # contains info about the ship
+    # tested
     def value_at_location(self, string_key):
-        dict_key = self._board_key(string_value)
+        dict_key = self.board_key(string_key)
         if dict_key:
             self.previous_targets.append(dict_key)
             return self.board[dict_key]
@@ -49,13 +53,12 @@ class Board:
     # i like this below
     # sets key value to the value provided if the key is in the dict
     def edit_board(self, string_value, value):
-        key = self._board_key(string_value)
+        key = self.board_key(string_value)
         if key:
             self.board[key] = value
             return True
         return False
     # add dict value to board here 
     def display_board(self):
-        return [['  ~  'for i in range(self.size)] for j in range(self.size)]
-
-
+        display = [[self.board[chr(65+i)+str(j+1)] for i in range(self.size)] for j in range(self.size)]
+        return display
