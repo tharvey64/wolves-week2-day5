@@ -42,15 +42,16 @@ class BattleShip:
         self.boards = []
         self.ship_sizes = {'Aircraft Carrier':5,'BattleShip':4,'Submarine':3,'Destroyer':3,'Patrol Boat':2}
     # called in controller
-    def add_player(self, player):
+    def add_player_and_board(self, player, board):
         self.players.append(player)
+        self.boards.append(board)
     # no input
     # called in controller
     def end_turn(self):
         if self.game_over():
             return True
         last_player = self.players.pop(0)
-        self.players.append(last_player) 
+        self.players.append(last_player)
 
         last_board = self.boards.pop(0)
         self.boards.append(last_board)
@@ -60,11 +61,11 @@ class BattleShip:
     def place_ship(self, start_coordinates, end_coordinates, ship):
         if start_coordinates[0] == end_coordinates[0]:
             if abs(start_coordinates[1]-end_coordinates[1]) == ship.size:
-                
+
                 step = start_coordinates[1]-end_coordinates[1] / ship.size
 
                 place_ship_here = [(coordinate[0],i) for i in range(start_coordinates[1], end_coordinates[1]+step, step)]
-                
+
                 if not self.occupied(place_ship_here):
                     ship.location = place_ship_here
                     self.boards[0].add_ship_location(ship)
@@ -72,11 +73,11 @@ class BattleShip:
 
         elif start_coordinates[1] == end_coordinates[1]:
             if abs(start_coordinates[0]-end_coordinates[0]) == ship.size:
-                
+
                 step = start_coordinates[0]-end_coordinates[0] / ship.size
 
                 place_ship_here = [(i,coordinate[1]) for i in range(start_coordinates[0], end_coordinates[0]+step, step)]
-                
+
                 if not self.occupied(place_ship_here):
                     ship.location = place_ship_here
                     self.boards[0].add_ship_location(ship)
@@ -101,7 +102,7 @@ class BattleShip:
     # call in controller
     def check_ships(self):
         for ship in self.boards[1].ships_on_board:
-            if not ship.is_sunk() and ship.is_hit(self.boards[1].previous_targets[-1])
+            if not ship.is_sunk() and ship.is_hit(self.boards[1].previous_targets[-1]):
                 coordinate = self.boards[1].previous_targets[-1]
                 self.boards[1].display[coordinate[1]][coordinate[0]] = '*'
                 return True
@@ -114,4 +115,3 @@ class BattleShip:
             if not ship.is_sunk():
                 return False
         return True
-
