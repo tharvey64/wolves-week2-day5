@@ -2,15 +2,14 @@
 class Player:
     def __init__(self, name):
         self.name = name
-        self.board = Board()
-        # need something to add ships or the 
-        # ship needs to be added in the game
+        self.board = Board() 
         self.fleet = []
         # below applies to the player not the players board
         self.previous_targets = []
 
     def is_ready(self):
         return len(self.fleet) == 5
+
 class Ship:
     def __init__(self, name, size):
         self.name = name
@@ -33,6 +32,7 @@ class Board:
 
     def board_key(self, string_value):
         column = "".join([char.upper() for char in string_value if char.isalpha()])
+        # breaks near "Z"
         if ord(column) > 64 + self.size or ord(column) < 65:
             return False  
         row = "".join([number for number in string_value if number.isdigit()])
@@ -40,9 +40,6 @@ class Board:
             return False
         dict_key_format = column + row
         return dict_key_format
-    # returns the value at the key provided if the key is in the dict 
-    # i dont like this it shouldnt return the ship value the ship value 
-    # contains info about the ship
     # tested
     # using to place ships
     def value_at_location(self, string_key):
@@ -58,7 +55,57 @@ class Board:
             self.locations[key] = value
             return True
         return False
-    # add dict value to location here 
+    # locates valid sequences of coordinates
+    # sequences begin at start 
+    #   PARTIALLY TESTED
+    def generate_sequences(self, start_string, size):
+        sequences = []
+
+        start = self.board_key(start_string)
+
+        if not start:
+            return False
+
+        end_list = self.sequence_direction(start, size)
+        
+        for end in end_list:
+            if end:
+                if end.isalpha() and self.board_key(end+start[1:]):
+
+                    raw_range = self.coordinate_generator(ord(start[0]), ord(end))
+                    sequences.append([chr(l) + start[1:] for l in raw_range])
+
+                elif end.isdigit() and self.board_key(end+start[0]):
+
+                    raw_range = self.coordinate_generator(int(start[1:]), int(end))
+                    sequences.append([start[0] + str(i) for i in raw_range]) 
+
+        return sequences
+
+    # creates a list of end coordinates based on an origin
+    # ends are found by adding or subtracting length
+    #   PARTIALLY TESTED 
+    def sequence_direction(self, origin, length): 
+        length -= 1                  
+        end_list = []
+        # vertical down
+        end = str(int(origin[1:])+length)
+        end_list.append(end)
+        # vertical up
+        end = str(int(origin[1:])-length)
+        end_list.append(end)
+        # horizontal right
+        end = chr(ord(origin[0])+length)
+        end_list.append(end)
+        # horizontal left
+        end = chr(ord(origin[0])-length)
+        end_list.append(end)
+        return end_list
+    #   PARTIALLY TESTED
+    def coordinate_generator(self, start, end):
+        step = 1 - 2 * (start > end)
+        return [i for i in range(start, end+step, step)]
+
     def display_board(self):
         display = []
         for j in range(self.size):
@@ -76,18 +123,16 @@ class Board:
 
 # any interaction between a player and another players board occurs in this class
 class BattleShip:
-    # adjusted for new board model
     def __init__(self):
         self.players = []
         self.war_time = False
+        # not sure how to do this
         # self.ship_sizes = {'Aircraft Carrier':5,'BattleShip':4,'Submarine':3,'Destroyer':3,'Patrol Boat':2}
-    # called in controller
     # adjusted for new board model
     # TESTED
     def add_player(self, player):
         self.players.append(player)
-    # called in controller
-    # adjusted for new board model
+
     # TESTED
     def end_turn(self):
         if self.game_over() and self.war_time:
@@ -95,7 +140,7 @@ class BattleShip:
         last_player = self.players.pop(0)
         self.players.append(last_player) 
         return True
-    # edit name of this and the instance variable
+ 
     # TESTED
     def current_board(self):
         if self.war_time:
@@ -103,9 +148,7 @@ class BattleShip:
         else:
             target = 0
         return self.players[target].board
-    # no input
-    # called in BattleShip.game_over()
-    # adjusted for new board model
+
     # Half Tested
     def game_over(self):
         for ship in self.players[1].fleet:
@@ -113,69 +156,15 @@ class BattleShip:
                 return False
         return True
 
-    # adjusted I Think not sure
-    # slim this down 
-     # TESTED
-    def ship_location_validator(self, start_coor, end_coor, ship):
-        # should probably pass a player into this method 
+    # TESTED
+    # You Optimized it?
+    # Yeah, we optimized it. 
+    def ship_location_validator(self, start_coor, ship):
         target_board = self.current_board()
-
-        start = target_board.board_key(start_coor)
-        end = target_board.board_key(end_coor)
-
-
-        # calling the board_key method ensures a letter will be
-        # at index 0
-        if not start or not end:
-            return False
-
-        # should the board be responsible for calculating the 
-        # distances? 
-        # I've decided the board should handle this
-        # instead of the game.
-        # check all sides using direction_of_ship
-        fixed = self.direction_of_ship(start,end)
-        if not fixed:
-            return False
-        # instead of if statments do both of these twice
-        # by first adding the size to the start then subtracting
-        # the size from the start. Generate the 4 sets then check to 
-        # see if they are on the board. Remove sets that lie outside the 
-        # board. <<< Might not have to remove them because board_key wont generate
-        # keys outside the board 
-        elif abs(int(start[1:])-int(end[1:]))+1 == ship.size:
-           
-            row_values = self.coordinate_generator(int(start[1:]),int(end[1:]))
-            valid_location = [target_board.board_key(fixed + str(i)) for i in row_values]
-            return valid_location
-
-        elif abs(ord(start[0])-ord(end[0]))+1 == ship.size:
-
-            column_values = self.coordinate_generator(ord(start[0]),ord(end[0]))
-            valid_location = [target_board.board_key(fixed + chr(x)) for x in column_values]
-            return valid_location
-
+        if start:
+            return target_board.generate_sequences(start_coor, ship.size)
         else:
             return False
-    # might move this to the board
-    # although it does not use any board methods
-    # UPDATE Must Move this to Board
-    # UPDATE The other methods i intend to move need this method
-    # Rename this in board class
-    # TESTED
-    def direction_of_ship(self, start, end):
-        if start[0] == end[0]:
-            return start[0]
-        elif start[1:] == end[1:]:
-            return start[1:]
-        else:
-            return False
-    # this should be moved to the board class
-    # UPDATE Must Move this to Board
-    # TESTED
-    def coordinate_generator(self, start, end):
-        step = 1 - 2 * (start > end)
-        return [i for i in range(start, end+step, step)]
 
     # has not been optimized for ai
     # TESTED
@@ -194,12 +183,13 @@ class BattleShip:
     # TESTED
     def occupied(self, coordinates):
         # has to be adapted
-        current_board = self.players[0].board
+        current_board = self.current_board()
         for key in coordinates:
             # USES VALUE_AT
             if current_board.value_at_location(key) != '~':
                 return True
         return False
+
     # user inputs coordinates
     # called in the controller
     # has not been optimized for ai
