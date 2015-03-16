@@ -8,27 +8,23 @@ class View:
         print("Would you like to start a new game? (y or n)")
         return input()
 
-    def get_player_name(self):
-        print("Please enter your name: ")
+    def get_player_name(self, number):
+        print("Please enter your name player {}: ".format(number))
         return input()
 
     def fleet_status(self):
         print("Before we begin, you must position your fleet strategically.")
         print("Your armada consists of an aircraft carrier, battleship, submarine, destroyer and patrol boat.")
-        print("Are you ready for battle?")
-
-    def select_ship_to_position(self):
-        print("Which vessel would you like to position")
-        return input()
+        # print("Are you ready for battle?")
 
     def position_starting_coordinate(self):
-        print("Enter first set of coordinates.")
+        print("Enter the coordinates to place your ship:")
         return input()
 
-    def position_ending_coordinate(self):
-        print("Enter second set of coordinates.")
+    def position_selection(self, options):
+        print("Select the position you would like:")
+        print(options)
         return input()
-
     def enter_firing_coordinates(self):
         print("Enter the location to fire upon:")
         return input()
@@ -55,5 +51,5 @@ class View:
         print("You sank all of the enemy's ships.  The day is won!")
     
     def display_game(self, current_board):
-        [print(value) for value in line for line in current_board]
+        [print("".join(line)) for line in current_board]
 
