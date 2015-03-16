@@ -1,61 +1,55 @@
-from models import Player,Ship,Board
+from models import Player,Ship,Board,BattleShip
 from views import View
 
 class Controller:
-	def __init__(self):
-		self.view = View()
-		self.ocean = Board(10)
-		self.admiral = Player("thomas")
+    def __init__(self):
+       self.view = View()
+       self.game = BattleShip()
+       # self.admiral
+       self.ship = []
 
-    # def place_ships(self):
+    def add_game_players(self):
+        name = self.view.get_player_name()
+        self.game.add_player(Player(name))
 
-	# def play(self):
+        name = self.view.get_player_name()
+        self.game.add_player(Player(name))
 
-	def initiate_game(self):
-		self.view.welcome_screen()
-		self.view.start_new_game()
-		self.view.get_player_name()
-		myGame.add_player_and_board()
+    def assemble_armada(self):
+        self.view.fleet_status()
+        armada = {'Aircraft Carrier':5,'BattleShip':4,'Submarine':3,'Destroyer':3,'Patrol Boat':2}
+        while not self.game.players[0].is_ready():
+            for ship_info in armada.items():
+                # self.view.select_ship_to_position()
+                print(ship_info)
+                self.ship = Ship(ship_info[0], ship_info[1])
 
-	def place_vessels(self):
-		self.view.fleet_status()
-		self.view.select_ship_to_position()
-		myShip.add_coordinates()
-		self.view.position_starting_coordinate()
-		self.view.position_ending_coordinate()
-		myGame.place_ship()
-		if myGame.place_ship == False:
-			coordinates_invalid()
+                start_value = self.view.position_starting_coordinate()
+                end_value = self.view.position_ending_coordinate()
 
-	def fire_guns(self):
-		myGame.shoot_at()
-		if myGame.shoot_at == False:
-			previous_target()
-		if myGame.shoot at == True:
-			if myShip.is_hit() == True:
-				target_hit()
-				if myShip.is_sunk() == True:
-					ship_sunk
-			else
-				target_missed()
+                board_location = self.game.ship_location_validator(start_value, end_value, self.ship)
+                self.game.place_ship_here(board_location, self.ship)
 
-	def manage_turn_end(self):
-		myGame.check_ships()
-		myGame.end_turn()
+            if self.game.players[0].is_ready():
+                self.game.end_turn()
+            # self.view.coordinates_invalid()
+        self.game.war_time = True
 
-	# def get_game_status(self):
-	# 	if myGame.game_over:
-
-
-aPlayer = Player()
-myShip = Ship()
-myBoard = Board()
-myGame = Controller()
-
-myGame.initiate_game()
+    def game_flow(self):
+        while not self.game.game_over():
+            self.view.display_game(self.game.current_board().display_board())
+            target = ""
+            while self.game.shoot_at(target):
+                target = self.view.enter_firing_coordinates()
+                self.game.shoot_at(target)
+            self.game.end_turn()
+            # make different game methods to handle different boolean return values
+        self.view.victory_game_over()
 
 
-place_vessels()
-fire_guns()
-manage_turn_end()
-get_game_status()
+def set_up_game():
+    control = Controller()
+    control.add_game_players()
+    control.assemble_armada()
+    control.game_flow()
+set_up_game()
