@@ -1,6 +1,6 @@
 class View:
-	def __init__(self):
-	   pass
+    def __init__(self):
+       pass
     def welcome_screen(self):
         print("Welcome to Battleship.")
 
@@ -29,6 +29,10 @@ class View:
         print("Enter second set of coordinates.")
         return input()
 
+    def enter_firing_coordinates(self):
+        print("Enter the location to fire upon:")
+        return input()
+
     def coordinates_invalid(self):
         print("The coordinates you have entered conflict with a previous set which was entered.")
 
@@ -49,12 +53,7 @@ class View:
 
     def victory_game_over(self):
         print("You sank all of the enemy's ships.  The day is won!")
-
-
-
-
-
-
+    
     def display_game(self, current_board):
-        # print(current_board)
+        [print(value) for value in line for line in current_board]
 

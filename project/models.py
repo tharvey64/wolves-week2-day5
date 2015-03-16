@@ -8,10 +8,9 @@ class Player:
         self.fleet = []
         # below applies to the player not the players board
         self.previous_targets = []
-        # should the player keep track of the previous
-        # guesses
-        # ship_sizes = {'Aircraft Carrier':5,'BattleShip':4,'Submarine':3,'Destroyer':3,'Patrol Boat':2}
 
+    def is_ready(self):
+        return len(self.fleet) == 5
 class Ship:
     def __init__(self, name, size):
         self.name = name
@@ -25,12 +24,12 @@ class Ship:
 class Board:
     def __init__(self, size=10):
         self.size = size
-        self.locations = {}
+        self.locations = self.create_board()
     # creates key and checks to see if it is valid
     # i like this below
     # tested
     def create_board(self):
-        self.locations = {chr(65+j)+str(i+1): '~' for i in range(self.size) for j in range(self.size)}
+        return {chr(65+j)+str(i+1): '~' for i in range(self.size) for j in range(self.size)}
 
     def board_key(self, string_value):
         column = "".join([char.upper() for char in string_value if char.isalpha()])
