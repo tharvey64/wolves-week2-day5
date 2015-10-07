@@ -1,185 +1,303 @@
+import random
+import uuid
+
 class Player:
     def __init__(self, name):
         self.name = name
+        self.key = uuid.uuid4().hex
         self.board = Board() 
-        self.fleet = []
-        self.previous_targets = []
+        self.__fleet = []
+        self.ships_sunk = []
 
     def is_ready(self):
-        return len(self.fleet) == 5
+        return len(self.__fleet) == 5
+
+    def add_ship(self, ship):
+        self.__fleet.append(ship)
+
+    def fleet_sunk(self):
+        return all(ship.is_sunk() for ship in self.__fleet)
+    # Consider New Name
+    def fleet_status(self):
+        return [ship.get_size() for ship in self.__fleet if not ship.is_sunk()]
+
+class Computer(Player):
+    def __init__(self, height=10, width=10, name="computer"):
+        super().__init__(name)
+        self.__image = self.__build_image(width, height)
+        self.__strategy = dict(seek=self.__seek,destroy=self.__destroy)
+        self.__current_strategy = 'seek'
+        self.__current_hit_streak = list()
+
+    def ship_placement_start_point(self, height=10, width=10):
+        point = random.randint(1, height*width)
+        x_idx = point % width
+        y_idx = point // width
+        return chr(y_idx+65)+str(x_idx)
+
+    def position_ship(self, choices):
+        return random.randint(0, len(choices)-1)
+
+    def setup_image(self, all_ship_sizes):
+        self.__update_image(new_image=self.__image,
+            boat_sizes=all_ship_sizes, 
+            condition=lambda item: True)
+
+    def pre_turn(self):
+        y_idx,x_idx = self.__strategy[self.__current_strategy]()
+        # Convert Target into "<Letter><Digit>"
+        return chr(y_idx+65)+str(x_idx)
+
+    def post_turn(self, result, ship_sizes_remaining):
+        # If it is one of the First Two Branches 
+        # Something Went Wrong
+        if not result.get('valid'):
+            print("Fail ai_model.py 28")
+            # invalid target
+            # image is out of sync with actual board
+            # Create Function That Reads In The Opponents 
+            # board and creates an accurate image
+        elif not result.get('executed'):
+            print("Fail ai_model.py 33")
+            # previous target
+            # image is out of sync with actual board
+            # Create Function That Reads In The Opponents 
+            # board and creates an accurate image
+        else:
+            # update board
+            # NEED THE PREVIOUS SHOT
+            point = self.convert_to_coordinate(result.get('target'))
+            # set target to 0
+            self.__image[point[0],point[1]] = 0
+            new_image = self.__build_image()
+            self.__update_image(new_image=new_image, 
+                boat_sizes=ship_sizes_remaining, 
+                condition=lambda item: item != 0)
+            if result.get('sunk'):
+                # ship sunk 
+                self.__current_hit_streak = []
+                # switch to seek mode
+                self.__current_strategy = 'seek'
+            elif result.get('hit'):
+                # hit ship
+                self.__current_hit_streak.append(point)
+                # if not destroy mode switch to destroy mode store target
+                self.__current_strategy = 'destroy'
+
+
+    # Should Return Y,X
+    def __seek(self):
+        pass
+
+    # Should Return Y,X
+    def __destroy(self):
+        pass
+
+    @staticmethod
+    def __build_image(width=10,height=10):
+        return [[0]*width for i in range(height)]
+
+    def __update_image(self, **kwargs):
+        # new_image, boat_sizes, condition
+        boat_sizes = kwargs['boat_sizes']
+        new_image = kwargs['new_image']
+        condition = kwargs['condition']
+        image_len = len(self.__image)
+        image_zone = range(image_len)
+        for y in image_zone:
+            for x in image_zone:
+                if not condition(self.__image[y][x]):
+                    continue
+                for size in boat_sizes:
+                    if x + (size-1) < image_len:
+                        if all(condition(self.__image[y][inc]) for inc in range(x+1,x+size)):
+                            for increment in range(size):
+                                new_image[y][x+increment]+=1
+                    if y + (size-1) < image_len:
+                        if all(condition(self.__image[inc][x]) for inc in range(y+1,y+size)):
+                            for increment in range(size):
+                                new_image[y+increment][x]+=1
+        self.__image = new_image
 
 class Ship:
-    def __init__(self, name, size):
+    def __init__(self, tag, name, size):
+        self.tag = tag
         self.name = name
-        self.size = size
-        self.hits = 0
-    def hit(self):
-        self.hits += 1
-    def is_sunk(self):
-        # if you return self then the name wont matter
-        if self.hits == self.size:
-            return self.name
-        return False
-        
+        self.__size = size
+        self.__hits = 0
+    
+    def get_size(self):
+        return self.__size
 
+    def hit(self):
+        self.__hits += 1
+    
+    def is_sunk(self):
+        if self.__hits == self.__size:
+            return self.__size
+        return False
+
+# Haven't Tested target
+# Or place_ship 
 class Board:
-    def __init__(self, size=10):
+    # needs a method to handle a shot at the board
+    def __init__(self, size=10, hit="~X~", miss="~O~", sea="~~~"):
         self.size = size
-        self.locations = self.create_board()
+        self.__hit_place_holder = hit
+        self.__miss_place_holder = miss
+        self.__sea_place_holder = sea
+        self.__locations = self.create_board()
+    
 
     def create_board(self):
-        return {chr(65+j)+str(i+1): '~' for i in range(self.size) for j in range(self.size)}
+        return [[chr(65+j)+str(i+1) for i in range(self.size)] for j in range(self.size)]
 
-    def board_key(self, string_value):
-        if not string_value:
-            return False
-        column = "".join([char.upper() for char in string_value if char.isalpha()])
-        if ord(column) > 64 + self.size or ord(column) < 65:
-            return False  
-        row = "".join([number for number in string_value if number.isdigit()])
-        if int(row) > self.size or int(row) < 1:
-            return False
-        dict_key_format = column + row
-        return dict_key_format
+    def target(self, x_idx, y_idx):
+        value = self.__locations[y_idx][x_idx]
+        if isinstance(value, str):
+            if value == self.__hit_place_holder or value == self.__miss_place_holder:
+                return dict(valid=True,executed=False,hit=False,sunk=False)
+            else:
+                self.__locations[y_idx][x_idx] = self.__miss_place_holder
+                return dict(valid=True,executed=True,hit=False,sunk=False)
+        else:
+            value.hit()
+            self.__locations[y_idx][x_idx] = self.__hit_place_holder
+            return dict(valid=True,executed=True,hit=True,sunk=value.is_sunk())
+    # if isinstance(self.__locations[y][x_idx],str)
+    # make this a lambda function
+    # or pass in a version of the board
+    def empty_spaces(self, x, y, ship):
+        results = []
+        size = ship.get_size()
+        if not -1 < x < self.size or not -1 < y < self.size: 
+            return None, None
+        if x + (size-1) < self.size:
+            spaces = [self.__locations[y][x_idx] for x_idx in range(x,x+size) if isinstance(self.__locations[y][x_idx],str)]
+            if len(spaces) == size:
+                results.append(spaces)
+        if x - (size-1) > -1:
+            spaces = [self.__locations[y][x_idx] for x_idx in range(x-(size-1),x+1) if isinstance(self.__locations[y][x_idx],str)]
+            if len(spaces) == size:
+                results.append(spaces)
+        if y + (size-1) < self.size:
+            spaces = [self.__locations[y_idx][x] for y_idx in range(y,y+size) if isinstance(self.__locations[y_idx][x],str)]
+            if len(spaces) == size:
+                results.append(spaces)
+        if y - (size-1) > -1:
+            spaces = [self.__locations[y_idx][x] for y_idx in range(y-(size-1),y+1) if isinstance(self.__locations[y_idx][x],str)]
+            if len(spaces) == size:
+                results.append(spaces)
+        if not results:
+            return None, None
+        def place_ship(choice):
+            if not -1 < choice < len(results):
+                return None
+            for point in results[choice]:
+                y_idx = ord(point[0])-65
+                x_idx = int(point[1:])-1
+                self.__locations[y_idx][x_idx] = ship
+            return ship
+        return results, place_ship
 
-    def value_at_location(self, string_key):
-        dict_key = self.board_key(string_key)
-        if dict_key:
-            return self.locations[dict_key]
-        return False
-
-    def edit_board(self, string_value, value):
-        key = self.board_key(string_value)
-        if key:
-            self.locations[key] = value
-            return True
-        return False
-
-    def generate_sequences(self, start_string, size):
-        sequences = []
-
-        start = self.board_key(start_string)
-
-        if not start:
-            return False
-
-        end_list = self.sequence_direction(start, size)
-        
-        for end in end_list:
-            if end:
-                if end.isalpha() and self.board_key(end+start[1:]):
-
-                    raw_range = self.coordinate_generator(ord(start[0]), ord(end))
-                    sequences.append([chr(l) + start[1:] for l in raw_range])
-
-                elif end.isdigit() and self.board_key(end+start[0]):
-
-                    raw_range = self.coordinate_generator(int(start[1:]), int(end))
-                    sequences.append([start[0] + str(i) for i in raw_range]) 
-
-        return sequences
- 
-    def sequence_direction(self, origin, length): 
-        length -= 1                  
-        end_list = []
-        # vertical down
-        end = str(int(origin[1:])+length)
-        end_list.append(end)
-        # vertical up
-        end = str(int(origin[1:])-length)
-        end_list.append(end)
-        # horizontal right
-        end = chr(ord(origin[0])+length)
-        end_list.append(end)
-        # horizontal left
-        end = chr(ord(origin[0])-length)
-        end_list.append(end)
-        return end_list
-
-    def coordinate_generator(self, start, end):
-        step = 1 - 2 * (start > end)
-        return [i for i in range(start, end+step, step)]
-
-    def display_board(self):
-        display = []
-        for j in range(self.size):
-            line = []
-            for i in range(self.size):
-                if isinstance(self.locations[chr(65+i)+str(j+1)], str):
-                    line.append('  {}  '.format(self.locations[chr(65+i)+str(j+1)]))
+    # temporary until i find a home for this 
+    def display_for_owner(self):
+        outer = [0]*self.size
+        for i in range(self.size):
+            inner = [0]*self.size
+            for j in range(self.size):
+                if isinstance(self.__locations[i][j], Ship):
+                    inner[j] = "|{}|".format(self.__locations[i][j].tag)
                 else:
-                    line.append('  ~  ')
-                    
-            display.append(line)
-        return display
+                    inner[j] = self.__sea_place_holder
+            outer[i] = inner
+        return outer
+        # return ["|".join([self.__locations[i][j] if isinstance(self.__locations[i][j],str) else self.__locations[i][j].name for j in range(self.size)]) for i in range(self.size)]
 
-class BattleShip:
+    def display_for_opponent(self):
+        outer = [0]*self.size
+        for i in range(self.size):
+            inner = [0]*self.size
+            for j in range(self.size):
+                if isinstance(self.__locations[i][j],str):
+                    if not self.__locations[i][j][0].isalpha():
+                        inner[j] = self.__locations[i][j]
+                    else:
+                        inner[j] = self.__sea_place_holder
+                else:
+                    inner[j] = self.__sea_place_holder
+            outer[i] = inner
+        return outer
+        # return ["|".join([self.__locations[i][j] if isinstance(self.__locations[i][j],str) else chr(65+j)+str(i+1) for j in range(self.size)]) for i in range(self.size)]
+
+# Questions
+# Do i create a fully valid user before making an instance of the game
+# Or Use get_current_player to check if that player is ready
+# Need A game over method
+
+class BattleShipGame:
     def __init__(self):
         self.players = []
-        self.war_time = False
-        # self.ship_sizes = {'Aircraft Carrier':5,'BattleShip':4,'Submarine':3,'Destroyer':3,'Patrol Boat':2}
+        self.ship_classifications = []
+        self.__current_turn = 0
+        self.num_players = 0
 
     def add_player(self, player):
         self.players.append(player)
+        self.num_players += 1
+
+    def add_ship_clasification(self, tag, name, size):
+        self.ship_classifications.append(dict(tag=tag,name=name,size=size))
+
+    def get_current_player(self):
+        return self.players[self.__current_turn]
+
+    def get_opponent(self):
+        return self.players[(self.__current_turn-1) % self.num_players]
+
+    def display_opponents_board(self, opponent):
+        return opponent.board.display_for_opponent()
+
+    def display_player_board(self, player):
+        return player.board.display_for_owner()
+
+    def choose_ship_location(self, point, ship_spec, player):
+        specs = self.ship_classifications[ship_spec]
+        ship = Ship(specs['tag'], specs['name'], specs['size'])
+        x,y = self.check_point(point, player.board)
+        if x is None or y is None:
+            return None, None
+        return player.board.empty_spaces(x,y,ship)
+
+    def check_point(self, point, board):
+        x_in = int(point[1:])-1
+        y_in = ord(point[0])-65
+        if not -1 < y_in < board.size or not -1 < x_in < board.size:
+            return None, None
+        return x_in, y_in
+
+    def add_ship_to_player(self, ship, player):
+        # player = self.get_current_player()
+        player.add_ship(ship)
+
+    def fire_shot(self, target, opponent):
+        # opponent = self.get_opponent()
+        x, y = self.check_point(target, opponent.board)
+        if x is None or y is None:
+            print("Line 287")
+            return dict(valid=False,executed=False,hit=False,sunk=False,target=target)
+        # Fire The Shot
+        result = opponent.board.target(x,y)
+        result['target'] = target
+        if result['executed']:
+            self.end_turn()
+            return result
+        return result
 
     def end_turn(self):
-        if self.game_over() and self.war_time:
-            return False
-        last_player = self.players.pop(0)
-        self.players.append(last_player) 
-        return True
- 
-    def current_board(self):
-        if self.war_time:
-            target = 1
-        else:
-            target = 0
-        return self.players[target].board
+        self.__current_turn = (self.__current_turn+1) % self.num_players
+        print(self.__current_turn)
 
     def game_over(self):
-        for ship in self.players[0].fleet:
-            if not ship.is_sunk():
-                return False
-        return True
+        return any(player.fleet_sunk() for player in self.players)
 
-    def ship_location_generator(self, start_coor, ship):
-        target_board = self.current_board()
-        board_positions = target_board.generate_sequences(start_coor, ship.size)
-        pop_these = [idx for idx,coordinates in enumerate(board_positions) if self.occupied(coordinates)]
-        [board_positions.pop(idx) for idx in pop_these]
-        return board_positions
-
-    def place_ship_here(self, locations, ship):
-        if self.occupied(locations):
-            return False
-        for key in locations:
-            self.current_board().edit_board(key, ship)   
-        self.players[0].fleet.append(ship) 
-        return True
-
-    def occupied(self, coordinates):
-        current_board = self.current_board()
-        for key in coordinates:
-            if current_board.value_at_location(key) != '~':
-                return True
-        return False
-
-    def shoot_at(self, coordinate):
-        target_board = self.current_board()
-        target_key = target_board.board_key(coordinate)
-
-        if not target_key or target_key in self.players[0].previous_targets:
-            return False
-
-        if target_board.value_at_location(target_key) != '~':
-            target_board.value_at_location(target_key).hit()
-            sunken_ship = target_board.value_at_location(target_key).is_sunk
-            target_board.edit_board(target_key, "*")           
-            if sunken_ship():
-                return sunken_ship()          
-            # value = "*"
-        else:
-            value = chr(164)
-            target_board.edit_board(target_key, value)
-        self.players[0].previous_targets.append(target_key)
-        return True
