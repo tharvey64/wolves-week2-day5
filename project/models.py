@@ -44,21 +44,36 @@ class Computer(Player):
             condition=lambda item: True)
 
     def pre_turn(self):
-        y_idx,x_idx = self.__strategy[self.__current_strategy]()
-        # Convert Target into "<Letter><Digit>"
-        return chr(y_idx+65)+str(x_idx)
+        '''
+        @return string with a letter followed by an integer or an empty string 
+        '''
+        print(self.__current_strategy)
+        possible_targets = self.__strategy[self.__current_strategy]()
+        if possible_targets:
+            print("models line 53")#Based On Strategy 
+            print(possible_targets)#Select Random Coordinate From This Group
+            print(self.__image)
+            target = max(
+                possible_targets, 
+                key=lambda target: self.__image[target[0]][target[1]]
+                )
+            print(target)
+            if len(target) == 2:
+                return chr(target[0]+65)+str(target[1]+1)
+        return ""
 
     def post_turn(self, result, ship_sizes_remaining):
         # If it is one of the First Two Branches 
         # Something Went Wrong
+        print(result.get('target'))
         if not result.get('valid'):
-            print("Fail ai_model.py 28")
+            print("Fail models.py 70")
             # invalid target
             # image is out of sync with actual board
             # Create Function That Reads In The Opponents 
             # board and creates an accurate image
         elif not result.get('executed'):
-            print("Fail ai_model.py 33")
+            print("Fail models.py 76")
             # previous target
             # image is out of sync with actual board
             # Create Function That Reads In The Opponents 
@@ -68,7 +83,10 @@ class Computer(Player):
             # NEED THE PREVIOUS SHOT
             point = self.convert_to_coordinate(result.get('target'))
             # set target to 0
-            self.__image[point[0],point[1]] = 0
+            print('models line 84')
+            print(result.get('target'))
+            print(point)
+            self.__image[point[0]][point[1]] = 0
             new_image = self.__build_image()
             self.__update_image(new_image=new_image, 
                 boat_sizes=ship_sizes_remaining, 
@@ -83,15 +101,71 @@ class Computer(Player):
                 self.__current_hit_streak.append(point)
                 # if not destroy mode switch to destroy mode store target
                 self.__current_strategy = 'destroy'
+    @staticmethod
+    def convert_to_coordinate(target_string):
+        '''
+        @param target_string is a string with a letter folled by an integer
 
+        @return a tuple of two integers or a tuple with two NoneTypes
+        '''
 
-    # Should Return Y,X
+        if not target_string[0].isalpha() or not target_string[1:].isdigit():
+            return None,None
+        y_idx = ord(target_string[0])-65
+        x_idx = int(target_string[1:])-1
+        return y_idx, x_idx
+
     def __seek(self):
-        pass
+        '''
+        @return A 2D list or an empty list
+        '''
 
-    # Should Return Y,X
+        return [[y_idx, max(enumerate(line),key=lambda item: item[1])[0]] for y_idx, line in enumerate(self.__image)]
+
     def __destroy(self):
-        pass
+        '''
+        @return A 2D list or an empty list
+        '''
+        if len(self.__current_hit_streak) == 1:
+            y_idx,x_idx = self.__current_hit_streak[0]
+            return self.__get_surround(y_idx,x_idx)
+        elif len(self.__current_hit_streak) > 1:
+            possible_targets = []
+            # This Should be refactored and Put this in a function
+            # This Does Not Work If Two Ships Are Lined up Next To Each Other
+            # Some How This Returned A Negative Number For ONe of The Options
+            # Needs Test Data
+            y_max = max(self.__current_hit_streak, key=lambda target: target[0])
+            y_min = min(self.__current_hit_streak, key=lambda target: target[0])
+            x_max = max(self.__current_hit_streak, key=lambda target: target[1])
+            x_min = min(self.__current_hit_streak, key=lambda target: target[1])
+            image_len = len(self.__image)
+            if y_max[0] == y_min[0]:
+                # Horizontal
+                if x_min[1]-1 > -1:
+                    possible_targets.append([x_min[0],x_min[1]-1])
+                if x_max[1]+1 < image_len:
+                    possible_targets.append([x_max[0],x_max[1]+1])
+            elif x_max[1] == x_min[1]:
+                # vertical
+                if y_min[1]-1 > -1:
+                    possible_targets.append([y_min[0]-1,y_min[1]])
+                if y_max[1]+1 < image_len:
+                    possible_targets.append([y_max[0]+1,y_max[1]])
+            return possible_targets
+
+    def __get_surround(self, y, x):
+        surrounding = []
+        image_len = len(self.__image)
+        if y-1 > -1 and self.__image[y-1][x] > 0:
+            surrounding.append([y-1,x])
+        if y+1 < image_len and self.__image[y+1][x] > 0:
+            surrounding.append([y+1,x])
+        if x-1 > -1 and self.__image[y][x-1] > 0:
+            surrounding.append([y,x-1])
+        if x+1 < image_len and self.__image[y][x+1] > 0:
+            surrounding.append([y,x+1])
+        return surrounding
 
     @staticmethod
     def __build_image(width=10,height=10):
@@ -207,9 +281,12 @@ class Board:
             inner = [0]*self.size
             for j in range(self.size):
                 if isinstance(self.__locations[i][j], Ship):
-                    inner[j] = "|{}|".format(self.__locations[i][j].tag)
+                    inner[j] = "~{}~".format(self.__locations[i][j].tag)
                 else:
-                    inner[j] = self.__sea_place_holder
+                    if not self.__locations[i][j][0].isalpha():
+                        inner[j] = self.__locations[i][j]
+                    else:
+                        inner[j] = self.__sea_place_holder
             outer[i] = inner
         return outer
         # return ["|".join([self.__locations[i][j] if isinstance(self.__locations[i][j],str) else self.__locations[i][j].name for j in range(self.size)]) for i in range(self.size)]
@@ -296,7 +373,6 @@ class BattleShipGame:
 
     def end_turn(self):
         self.__current_turn = (self.__current_turn+1) % self.num_players
-        print(self.__current_turn)
 
     def game_over(self):
         return any(player.fleet_sunk() for player in self.players)

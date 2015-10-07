@@ -26,9 +26,9 @@ class View:
         print("Your armada consists of an aircraft carrier, battleship, submarine, destroyer and patrol boat.")
         # print("Are you ready for battle?")
 
-    def position_starting_coordinate(self):
+    def position_starting_coordinate(self, ship):
         print("_"*75)
-        print("Enter the coordinates to place your ship:")
+        print("Enter the coordinates to place your {name}:({size} spaces)".format(**ship))
         return input()
 
     def position_selection(self, options):
@@ -45,7 +45,7 @@ class View:
 
     def coordinates_invalid(self):
         print("_"*75)
-        print("The coordinates you have entered conflict with a previous set which was entered.")
+        print("The coordinates you have entered are invalid.")
 
     def previous_target(self):
         print("_"*75)
@@ -75,7 +75,7 @@ class View:
         print("_"*75)
         letters = ['A','B','C','D','E','F','G','H','I','J']
         print("\t {}".format(player_name))
-        print("",(" {} "*10).format(*list(range(1,11))))
+        print(" |"+(" {} |"*9 + " {}").format(*list(range(1,11))))
         for idx in range(len(current_board)):
-            print(letters[idx], "".join(current_board[idx]))
+            print(letters[idx]+"|" + "|".join(current_board[idx]))
         input()

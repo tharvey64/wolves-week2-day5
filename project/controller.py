@@ -34,8 +34,10 @@ class Controller:
         if not -1 < y_in < board.size or not -1 < x_in < board.size:
             return None, None
         return x_in, y_in
-    # test this  
+
+  
     def assemble_armada(self):
+        # Add Option To Place Ships Randomly on The Board
         self.view.fleet_status()
         for admiral in  self.game.players:
             is_computer = isinstance(admiral, Computer)
@@ -48,7 +50,7 @@ class Controller:
                         # Can pass board height and width here
                         start_value = admiral.ship_placement_start_point()
                     else:
-                        start_value = self.view.position_starting_coordinate()
+                        start_value = self.view.position_starting_coordinate(self.ship_specs[ship_spec_idx])
                     if any(num is None for num in self.check_location(start_value, admiral.board)):
                         continue
                     board_locations, place_ship_here = self.game.choose_ship_location(start_value, ship_spec_idx, admiral)
@@ -65,17 +67,17 @@ class Controller:
                         self.view.coordinates_invalid()
                 self.game.add_ship_to_player(ship_placed, admiral)
                 # Make This Optional
-                # if not is_computer:
-                board = self.game.display_player_board(admiral)
-                self.view.display_game(admiral.name, board)
+                if not is_computer:
+                    board = self.game.display_player_board(admiral)
+                    self.view.display_game(admiral.name, board)
             # Run Remaining Setup Methods For Computer Here
             if is_computer:
                 # For Now Just Use computers List of Ships To Setup
                 # Make Game Method That Returns The Sizes of The Opponents
                 # Remaining Ships
                 admiral.setup_image(admiral.fleet_status())
-                print("controller line 78")
-                print(admiral._Computer__image)
+                # print("controller line 78")
+                # print(admiral._Computer__image)
         # AsK If They Are Ready To Play
     # Clean This Up
     def game_flow(self):
@@ -102,21 +104,21 @@ class Controller:
                         self.view.coordinates_invalid()
                         location = None
                 # rename result
-                result = self.game.fire_shot(location, opponent)
+                after_action_report = self.game.fire_shot(location, opponent)
                 if is_computer:
-                    admiral.post_turn(result, opponent.fleet_status())
-                    if result.get('executed'):
+                    admiral.post_turn(after_action_report, opponent.fleet_status())
+                    if after_action_report.get('executed'):
                         self.view.display_game(
                             opponent.name,
                             self.game.display_player_board(opponent)
                             )
                 else:
-                    if not result.get('valid'):
+                    if not after_action_report.get('valid'):
                         self.view.coordinates_invalid()
-                    elif not result.get('executed'):
+                    elif not after_action_report.get('executed'):
                         self.view.previous_target()
-                    elif result.get('hit'):
-                        if result.get('sunk'):
+                    elif after_action_report.get('hit'):
+                        if after_action_report.get('sunk'):
                             self.view.ship_sunk()
                         else:
                             self.view.target_hit()
@@ -124,9 +126,8 @@ class Controller:
                         self.view.target_missed()
                     board_after_shot = self.game.display_opponents_board(opponent)
                     self.view.display_game(opponent.name, board_after_shot)
-                result = result.get('executed')
+                result = after_action_report.get('executed')
             # print(chr(27) + "[2J")
-            # make different game methods to handle different boolean return values
         self.view.victory_game_over()
 
 def set_up_game():
